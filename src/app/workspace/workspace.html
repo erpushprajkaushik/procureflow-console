@@ -1,0 +1,519 @@
+<a class="skip" href="#main">Skip to content</a>
+<aside class="sidebar">
+  <a routerLink="/overview" class="brand"
+    ><span class="brand-icon">pf</span> procureflow<span class="brand-dot">.</span></a
+  >
+  <div class="workspace-name">
+    <span class="workspace-avatar">N</span>
+    <div><strong>Northwind Collective</strong><small>Demo workspace</small></div>
+  </div>
+  <div class="nav-label">WORKSPACE</div>
+  <nav aria-label="Main navigation">
+    <a routerLink="/overview" routerLinkActive="active"
+      ><span aria-hidden="true">◫</span> Overview</a
+    >
+    <a routerLink="/requests" routerLinkActive="active"
+      ><span aria-hidden="true">▤</span> Purchase requests
+      <b>{{ store.state().requests.length }}</b></a
+    >
+    <a routerLink="/suppliers" routerLinkActive="active"
+      ><span aria-hidden="true">◇</span> Suppliers</a
+    >
+    <a routerLink="/activity" routerLinkActive="active"
+      ><span aria-hidden="true">◷</span> Activity</a
+    >
+  </nav>
+  <div class="sidebar-note">
+    <span class="eyebrow">BUILT TO EXPLORE</span
+    ><strong>Small workflow.<br />Thoughtful details.</strong>
+    <p>Try a draft, compare quotes,<br />then award a supplier.</p>
+    <a
+      href="https://github.com/erpushprajkaushik/procureflow-console"
+      target="_blank"
+      rel="noopener"
+      >Explore the source ↗</a
+    >
+  </div>
+  <div class="user">
+    <span class="avatar">PK</span>
+    <div><strong>Pushpraj Kaushik</strong><small>Portfolio demo · Buyer</small></div>
+  </div>
+</aside>
+<div class="app-main">
+  <header class="topbar">
+    <div class="breadcrumb">
+      Workspace <span>/</span> {{ view() === 'overview' ? 'Overview' : title }}
+    </div>
+    <div class="top-right">
+      <span class="demo-tag"
+        ><i></i> {{ store.mode() === 'api' ? 'Local API connected' : 'Interactive demo' }}</span
+      ><a
+        href="https://github.com/erpushprajkaushik"
+        target="_blank"
+        rel="noopener"
+        aria-label="Visit Pushpraj's GitHub profile"
+        class="avatar small"
+        >PK</a
+      >
+    </div>
+  </header>
+  <main id="main">
+    <div class="heading">
+      <div>
+        <div class="eyebrow">PROCUREMENT, SIMPLIFIED</div>
+        <h1>{{ title }}</h1>
+        <p>{{ subtitle }}</p>
+      </div>
+      <button class="primary" (click)="openCreate()" [disabled]="store.busy()">
+        <span aria-hidden="true">＋</span> New request
+      </button>
+    </div>
+    @if (store.error()) {
+      <div class="message error" role="alert">
+        {{ store.error()
+        }}<button aria-label="Dismiss error" (click)="store.error.set('')">×</button>
+      </div>
+    }
+    @if (store.notice()) {
+      <div class="message success" role="status">
+        {{ store.notice()
+        }}<button aria-label="Dismiss notification" (click)="store.notice.set('')">×</button>
+      </div>
+    }
+    @if (view() === 'overview') {
+      <section class="metrics" aria-label="Workspace metrics">
+        <article class="metric">
+          <div><span>Open requests</span><span class="metric-icon green">▤</span></div>
+          <strong>{{ store.metrics().open | number: '2.0-0' }}</strong><small
+            ><i class="dot green-bg"></i> Ready for supplier quotes</small
+          >
+        </article>
+        <article class="metric">
+          <div><span>Total requested budget</span><span class="metric-icon blue">＄</span></div>
+          <strong>{{
+            store.metrics().budget / 100 | currency: 'USD' : 'symbol' : '1.0-0'
+          }}</strong><small>Across {{ store.state().requests.length }} purchase requests</small>
+        </article>
+        <article class="metric">
+          <div><span>Supplier quotes</span><span class="metric-icon amber">▱</span></div>
+          <strong>{{ store.metrics().quotes | number: '2.0-0' }}</strong><small
+            >Compare price and lead time</small
+          >
+        </article>
+        <article class="metric">
+          <div><span>Awarded requests</span><span class="metric-icon purple">✓</span></div>
+          <strong>{{ store.metrics().awarded | number: '2.0-0' }}</strong><small
+            ><i class="dot purple-bg"></i> Suppliers selected</small
+          >
+        </article>
+      </section>
+    }
+    @if (view() === 'overview' || view() === 'requests') {
+      <section class="panel request-panel">
+        <div class="panel-heading">
+          <div>
+            <h2>
+              Purchase requests <span class="count">{{ store.state().requests.length }}</span>
+            </h2>
+            <p>Keep your next purchase moving forward.</p>
+          </div>
+          <span class="subtle">USD · fictional sample data</span>
+        </div>
+        <div class="table-tools">
+          <div class="tabs" role="group" aria-label="Filter by status">
+            @for (s of statuses; track s) {
+              <button
+                [class.selected]="status() === s"
+                [attr.aria-pressed]="status() === s"
+                (click)="status.set(s)"
+              >
+                {{ s }}
+              </button>
+            }
+          </div>
+          <label class="search"
+            ><span aria-hidden="true">⌕</span
+            ><input
+              aria-label="Search requests"
+              placeholder="Search requests…"
+              [ngModel]="search()"
+              (ngModelChange)="search.set($event)"
+          /></label>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">REQUEST</th>
+                <th scope="col">STATUS</th>
+                <th scope="col">BUDGET</th>
+                <th scope="col">QUOTES</th>
+                <th scope="col">UPDATED</th>
+                <th scope="col"><span class="sr-only">Details</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (r of rows(); track r.id) {
+                <tr>
+                  <td>
+                    <button class="request-title" (click)="openRequest(r.id)">
+                      <span [class]="'category-icon ' + r.category.toLowerCase()">{{
+                        r.category === 'Packaging'
+                          ? '▣'
+                          : r.category === 'Equipment'
+                            ? '⚙'
+                            : r.category === 'Ingredients'
+                              ? '♧'
+                              : '↗'
+                      }}</span><span
+                        ><strong>{{ r.title }}</strong
+                        ><small>{{ r.reference }} <span>·</span> {{ r.category }}</small></span
+                      >
+                    </button>
+                  </td>
+                  <td>
+                    <span [class]="'status ' + r.status.toLowerCase()"><i></i>{{ r.status }}</span>
+                  </td>
+                  <td class="amount">
+                    {{ r.budgetCents / 100 | currency: 'USD' : 'symbol' : '1.0-0' }}
+                  </td>
+                  <td>
+                    <span class="quote-count">{{ r.quotes.length }}</span>
+                  </td>
+                  <td class="subtle nowrap">{{ r.updatedAtUtc | date: 'MMM d, y' }}</td>
+                  <td>
+                    <button
+                      class="arrow"
+                      (click)="openRequest(r.id)"
+                      [attr.aria-label]="'View ' + r.title"
+                    >
+                      ↗
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        @if (!rows().length) {
+          <div class="empty">
+            <strong>No requests found</strong>
+            <p>Try another search or status.</p>
+            <button class="secondary" (click)="clear()">Clear filters</button>
+          </div>
+        }
+        <div class="table-footer">
+          <span>Showing {{ rows().length }} of {{ store.state().requests.length }} requests</span
+          ><span>Every request starts with a clear requirement.</span>
+        </div>
+      </section>
+    }
+    @if (view() === 'overview') {
+      <div class="bottom-grid">
+        <section class="panel">
+          <div class="panel-heading">
+            <div>
+              <h2>Recent activity</h2>
+              <p>A little context for every decision.</p>
+            </div>
+            <a class="text-link" routerLink="/activity">View all ↗</a>
+          </div>
+          <div class="activity-list">
+            @for (a of store.state().activity.slice(0, 3); track a.id) {
+              <article class="activity-item">
+                <span class="activity-dot">{{
+                  a.action.includes('awarded') ? '✓' : a.action.includes('Quote') ? '↙' : '＋'
+                }}</span>
+                <div>
+                  <strong>{{ a.action }}</strong>
+                  <p>{{ a.detail }}</p>
+                  <small
+                    >{{ a.actor }} <span>·</span>
+                    {{ a.createdAtUtc | date: 'MMM d, h:mm a' }}</small
+                  >
+                </div>
+              </article>
+            }
+          </div>
+        </section>
+        <section class="callout">
+          <div class="eyebrow">A BETTER BUYING WORKFLOW</div>
+          <h2>From requirement<br />to the right supplier.</h2>
+          <p>Draft a request. Compare the details.<br />Make the next decision with confidence.</p>
+          <a routerLink="/suppliers">Meet your suppliers <span>↗</span></a>
+          <div class="callout-art" aria-hidden="true"><span>▤</span><i>→</i><span>✓</span></div>
+        </section>
+      </div>
+    }
+    @if (view() === 'suppliers') {
+      <div class="directory-tools">
+        <label class="search"
+          ><span aria-hidden="true">⌕</span
+          ><input
+            aria-label="Search suppliers"
+            placeholder="Search name, category or location…"
+            [ngModel]="search()"
+            (ngModelChange)="search.set($event)" /></label
+        ><span>{{ suppliers().length }} fictional suppliers</span>
+      </div>
+      <div class="supplier-grid">
+        @for (s of suppliers(); track s.id) {
+          <article class="panel supplier-card">
+            <div class="supplier-initial">{{ s.name[0] }}</div>
+            <span class="status open">{{ s.category }}</span>
+            <h2>{{ s.name }}</h2>
+            <p>{{ s.location }}</p>
+            <div class="supplier-stats">
+              <span
+                ><b>★ {{ s.rating }}</b
+                ><small>Sample rating</small></span
+              ><span
+                ><b>{{ s.completedOrders }}</b
+                ><small>Sample orders</small></span
+              >
+            </div>
+          </article>
+        }
+      </div>
+      @if (!suppliers().length) {
+        <div class="panel empty">
+          <strong>No suppliers found</strong
+          ><button class="secondary" (click)="clear()">Clear search</button>
+        </div>
+      }
+    }
+    @if (view() === 'activity') {
+      <section class="panel">
+        <div class="panel-heading">
+          <div>
+            <h2>Decision log</h2>
+            <p>Creates, quotes and awards in chronological order.</p>
+          </div>
+          <span class="count">{{ store.state().activity.length }}</span>
+        </div>
+        <div class="activity-list">
+          @for (a of store.state().activity; track a.id) {
+            <article class="activity-item">
+              <span class="activity-dot">✓</span>
+              <div>
+                <strong>{{ a.action }}</strong>
+                <p>{{ a.detail }}</p>
+                <small>{{ a.actor }} <span>·</span> {{ a.createdAtUtc | date: 'medium' }}</small>
+              </div>
+              <button class="text-link" (click)="openRequest(a.requestId)">View request ↗</button>
+            </article>
+          }
+        </div>
+      </section>
+    }
+    <footer class="page-footer">
+      <span
+        ><i class="dot green-bg"></i>
+        {{
+          store.mode() === 'browser'
+            ? 'Browser demo · changes saved on this device'
+            : 'Local .NET API · SQLite persistence'
+        }}</span
+      >
+      <div>
+        @if (store.mode() === 'browser') {
+          <button (click)="store.reset()" [disabled]="store.busy()">Reset sample data</button
+          ><button (click)="store.connect()" [disabled]="store.busy()">
+            {{ store.busy() ? 'Working…' : 'Connect local API' }}
+          </button>
+        } @else {
+          <button (click)="store.useBrowser()" [disabled]="store.busy()">
+            Return to browser demo
+          </button>
+        }
+      </div>
+    </footer>
+    <p class="sample-note">
+      An independent portfolio project by Pushpraj Kaushik. All organizations, transactions and
+      metrics are fictional.
+    </p>
+  </main>
+</div>
+@if (selected(); as r) {
+  <div class="overlay" (click)="close()">
+    <section
+      class="drawer"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="detail-title"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="drawer-top">
+        <span class="eyebrow">{{ r.reference }}</span><button
+          class="close"
+          aria-label="Close request details"
+          (click)="close()"
+          [disabled]="store.busy()"
+        >
+          ×
+        </button>
+      </div>
+      <span [class]="'status ' + r.status.toLowerCase()"><i></i>{{ r.status }}</span>
+      <h2 id="detail-title">{{ r.title }}</h2>
+      <p class="description">{{ r.description }}</p>
+      <div class="detail-stats">
+        <div>
+          <small>Requested budget</small><strong>{{ r.budgetCents / 100 | currency }}</strong>
+        </div>
+        <div>
+          <small>Quantity</small><strong>{{ r.quantity | number }} {{ r.unit }}</strong>
+        </div>
+      </div>
+      <div class="detail-meta">
+        <span>{{ r.category }}</span><span>Version {{ r.version }}</span>
+      </div>
+      @if (store.error()) {
+        <div class="message error" role="alert">{{ store.error() }}</div>
+      }
+      @if (r.status === 'Draft') {
+        <div class="hint">Publish this draft to accept supplier quotes.</div>
+        <button class="primary full" (click)="action(r, 'publish')" [disabled]="store.busy()">
+          Publish request ↗
+        </button>
+      }
+      <h3>
+        Supplier quotes <span class="count">{{ r.quotes.length }}</span>
+      </h3>
+      @for (q of r.quotes; track q.id) {
+        <article class="quote-card" [class.winning]="r.awardedQuoteId === q.id">
+          <div>
+            <strong>{{ q.supplierName }}</strong><span class="rating"
+              >★ {{ q.supplierRating }}</span
+            >
+          </div>
+          <div class="quote-price">
+            {{ q.amountCents / 100 | currency }}<span>{{ q.leadTimeDays }} day lead time</span>
+          </div>
+          <p>{{ q.note }}</p>
+          @if (r.status === 'Open') {
+            <button
+              class="secondary full"
+              (click)="action(r, 'award', q.id)"
+              [disabled]="store.busy()"
+              [attr.aria-label]="'Award to ' + q.supplierName"
+            >
+              Select supplier
+            </button>
+          }
+          @if (r.awardedQuoteId === q.id) {
+            <div class="winner">✓ Selected supplier</div>
+          }
+        </article>
+      }
+      @if (!r.quotes.length) {
+        <div class="hint">
+          No quotes yet. In browser mode, explore the open sample requests to compare quotes. API
+          suppliers can submit quotes through authenticated endpoints.
+        </div>
+      }
+      @if (r.status === 'Draft' || r.status === 'Open') {
+        <button class="danger-link" (click)="action(r, 'cancel')" [disabled]="store.busy()">
+          Cancel request
+        </button>
+      }
+    </section>
+  </div>
+}
+@if (modal()) {
+  <div class="overlay centered" (click)="close()">
+    <section
+      class="modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="create-title"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="drawer-top">
+        <div>
+          <span class="eyebrow">START WITH A CLEAR REQUIREMENT</span>
+          <h2 id="create-title">New purchase request</h2>
+        </div>
+        <button
+          class="close"
+          aria-label="Close new request"
+          (click)="close()"
+          [disabled]="store.busy()"
+        >
+          ×
+        </button>
+      </div>
+      <p class="subtle">Save a draft first. Publish it when you are ready.</p>
+      <form #form="ngForm" (ngSubmit)="save()">
+        <label class="field"
+          >Request title<input
+            name="title"
+            [(ngModel)]="draft.title"
+            required
+            minlength="3"
+            maxlength="100"
+            placeholder="e.g. Recycled shipping cartons"
+            autofocus
+        /></label>
+        <div class="form-row">
+          <label class="field"
+            >Category<select name="category" [(ngModel)]="draft.category">
+              @for (c of categories; track c) {
+                <option>{{ c }}</option>
+              }
+            </select></label
+          ><label class="field"
+            >Budget (USD)<input
+              type="number"
+              name="budget"
+              [(ngModel)]="draft.budget"
+              required
+              min="1"
+              max="1000000"
+              step="0.01"
+              placeholder="2,500.00"
+          /></label>
+        </div>
+        <div class="form-row">
+          <label class="field"
+            >Quantity<input
+              type="number"
+              name="quantity"
+              [(ngModel)]="draft.quantity"
+              required
+              min="1"
+              max="1000000"
+              step="1" /></label
+          ><label class="field"
+            >Unit<select name="unit" [(ngModel)]="draft.unit">
+              @for (u of units; track u) {
+                <option>{{ u }}</option>
+              }
+            </select></label
+          >
+        </div>
+        <label class="field"
+          >Requirement details<textarea
+            name="description"
+            [(ngModel)]="draft.description"
+            rows="4"
+            required
+            minlength="20"
+            maxlength="1500"
+            placeholder="Include specifications, delivery needs and anything suppliers should know."
+          ></textarea
+          ><small>20–1,500 characters · fictional data only</small></label
+        >
+        @if (store.error()) {
+          <div class="message error" role="alert">{{ store.error() }}</div>
+        }
+        <div class="modal-footer">
+          <button type="button" class="secondary" (click)="close()" [disabled]="store.busy()">
+            Cancel</button
+          ><button type="submit" class="primary" [disabled]="form.invalid || store.busy()">
+            {{ store.busy() ? 'Saving…' : 'Save draft' }}
+          </button>
+        </div>
+      </form>
+    </section>
+  </div>
+}
